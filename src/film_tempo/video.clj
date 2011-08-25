@@ -27,3 +27,9 @@
         seconds (int (/ total 1000))
         millis (rem total 1000)]
     {:hours hours :minutes minutes :seconds seconds :millis millis}))
+
+(defn format-time
+  "Formats the passed time map (see frame-to-time) time to HH:MM:SS."
+  [time]
+  (format "%02d:%02d:%02d" (:hours time) (:minutes time) (:seconds time)))
+
