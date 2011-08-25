@@ -15,8 +15,9 @@
   (* index (frame-delay fps)))
 
 (defn frame-to-time
-  "Converts a frame index to an array representing the elapsed time
-  from the beginning of the video as in [hours minutes seconds millis]"
+  "Converts a frame index to a map representing the elapsed time from
+  the beginning of the video. The keys are :hours :minutes :seconds
+  :millis."
   [index fps]
   (let [total (frame-to-millis index fps)
         hours (int (/ total HOUR-IN-MILLIS))
