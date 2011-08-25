@@ -1,0 +1,28 @@
+(ns film-tempo.video)
+
+(def HOUR-IN-MILLIS (* 60 60 1000))
+(def MINUTE-IN-MILLIS (* 60 1000))
+
+(defn frame-delay
+  "Calculates the inter-frame delay in millis based on the fps."
+  [fps]
+  (/ 1000 fps))
+
+(defn frame-to-millis
+  "Converts a frame index to elapsed time in millis from the
+  beginning of the video."
+  [index fps]
+  (* index (frame-delay fps)))
+
+(defn frame-to-time
+  "Converts a frame index to an array representing the elapsed time
+  from the beginning of the video as in [hours minutes seconds millis]"
+  [index fps]
+  (let [total (frame-to-millis index fps)
+        hours (int (/ total HOUR-IN-MILLIS))
+        total (rem total HOUR-IN-MILLIS)
+        minutes (int (/ total MINUTE-IN-MILLIS))
+        total (rem total MINUTE-IN-MILLIS)
+        seconds (int (/ total 1000))
+        millis (rem total 1000)]
+    {:hours hours :minutes minutes :seconds seconds :millis millis}))
