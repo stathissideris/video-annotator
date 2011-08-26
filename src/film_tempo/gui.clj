@@ -1,7 +1,8 @@
 (ns film-tempo.gui
   (:require [clojure.contrib.miglayout :as mig]
             [clarity.component :as c]
-            clarity.utils))
+            clarity.utils)
+  (:import java.awt.Color))
 
 (defn image-panel [image]
   (let [p (proxy [javax.swing.JPanel] []
@@ -18,14 +19,16 @@
                  :layout [:wrap 5]
                  :column "[grow,fill][grow,fill][grow,fill][grow,fill][grow,fill]"
                  ;;video area
-                 (c/make :label "Film tempo v0.1" [:id :header]) :span
-                 (image-panel image) :span
+                 (c/make :label "Film tempo v0.1"
+                         [:id :header]
+                         [:background Color/black]) :span
+                 (image-panel image) :span :grow [:align :center]
                  ;;controls
                  (mig/miglayout (c/make :panel)
                                 :column "3[]3[grow,fill]3[]3"
-                                (c/make :label "00:00" [:id :current-time-label])
+                                (c/make :label "00:00" [:id :time-label])
                                 (c/make :slider [:id :position-slider])
-                                (c/make :label "00:00" [:id :total-time-label]))
+                                (c/make :label "00:00" [:id :duration-label]))
                  :span
                  (c/make :button "[]" [:id :stop-button])
                  (c/make :button ">" [:id :play-button])
