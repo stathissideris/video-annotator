@@ -16,26 +16,45 @@
 
 (defn make-player-panel [image]
   (mig/miglayout (c/make :panel)
-                 :layout [:wrap 5]
+                 :layout [:wrap 7] ;:debug
                  :column "[grow,fill][grow,fill][grow,fill][grow,fill][grow,fill]"
+                 (c/make :label "Video Annotator v0.1"
+                                        [:id :header]
+                                        [:font :size "x1.5"])
+                 :span
+
+                 (c/make :button "new" [:id :new-button] [:enabled false])
+                 (c/make :button "load" [:id :load-button])
+                 (c/make :button "save" [:id :save-button])
+                 :wrap
+                 
                  ;;video area
-                 (c/make :label "Film tempo v0.1"
-                         [:id :header]
-                         [:background Color/black]) :span
-                 (image-panel image) :span :grow [:align :center]
+                 (mig/miglayout (c/make :panel)
+                                :layout [:insets 0]
+                                :column "[center]10px[fill,grow]"
+                                (c/do-component (image-panel image)
+                                                [:background Color/black])
+                                (c/scroll-pane
+                                 (c/make :list [:id :annotation-list])) :growy)
+                 :span :growy
                  ;;controls
                  (mig/miglayout (c/make :panel)
+                                :layout [:insets 0]
                                 :column "3[]3[grow,fill]3[]3"
                                 (c/make :label "00:00" [:id :time-label])
                                 (c/make :slider [:id :position-slider])
                                 (c/make :label "00:00" [:id :duration-label]))
                  :span
-                 (c/make :button "[]" [:id :stop-button])
+                 (c/make :button "||" [:id :pause-button])
                  (c/make :button ">" [:id :play-button])
-                 (c/make :button "cut" [:id :cut-button])
+                 (c/make :button "<<" [:id :skip-back-button])
+                 (c/make :button ">>" [:id :skip-forward-button])
                  (c/make :button "x1" [:id :normal-speed-button])
                  (c/make :button "x0.5" [:id :half-speed-button])
-                 (c/make :panel [:id :timeline-area]) :span))
+                 (c/make :button "cut" [:id :cut-button])
+
+                 (c/make :panel [:id :timeline-area]) :span
+                 (c/make :label [:id :status-line]) :span))
 
 (defn make-player-frame [image]
   (clarity.utils/show-comp (make-player-panel image)))

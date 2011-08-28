@@ -28,6 +28,10 @@
         millis (rem total 1000)]
     {:hours hours :minutes minutes :seconds seconds :millis millis}))
 
+(defn time-to-frame
+  [msec fps]
+  (/ msec (frame-delay fps)))
+
 (defn format-time
   "Formats the passed time map (see frame-to-time) time to HH:MM:SS."
   [time]

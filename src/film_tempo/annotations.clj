@@ -1,7 +1,10 @@
-(ns film-tempo.annotations)
+(ns film-tempo.annotations
+  (:use clojure.contrib.json))
 
-(defn make-annotations [filename]
+(defn make-annotations [filename fps frame-duration]
   {:video filename
+   :fps fps
+   :frame-duration frame-duration
    :entries []})
 
 (defn add-cut [annotations position]
