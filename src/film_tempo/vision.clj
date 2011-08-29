@@ -14,6 +14,7 @@
 
 ;;"/Users/sideris/Movies/some.like.it.hot.avi"
 ;;"/Users/sideris/Downloads/StayingInLane_MPEG4.avi"
+;;"/Users/sideris/Movies/breaking bad/Breaking.Bad.s03ep12.Half_Measures.HDTV.avi"
 
 (defn frame-pos [capture]
   (get-capture-property capture :pos-frames))
@@ -44,6 +45,7 @@
       fps (get-capture-property capture :fps)
       normal-frame-delay (video/frame-delay fps)
       *frame-delay* (atom normal-frame-delay)
+      *speed-label* (atom "x1")
       *play-status* (atom :play)
       jump-frames (video/time-to-frame 10000 fps)
 
@@ -58,6 +60,27 @@
                        (:on-state-changed
                         (set-frame-pos capture (.getValue slider))))
       status-line ($ player :status-line)
+      set-image (fn [frame] (reset! *image* (deref (:buffered-image frame))))
+      update-time-display
+      #(swing/do-swing
+        (let [f (frame-pos capture)]
+          (.setText time-label (video/format-time (video/frame-to-time f fps)))
+          (doto slider
+            (.removeChangeListener slider-listener)
+            (.setValue f)
+            (.addChangeListener slider-listener))
+          (.setText status-line (str filename
+                                     " - Speed: " @*speed-label*
+                                     " (f" (int f) ")"))))
+      frame-before-pause (atom 0)
+
+      play-button ($ player :play-pause-button)
+      play #(do (reset! *play-status* :play)
+                (.setText play-button "||"))
+      pause #(do (reset! frame-before-pause (frame-pos capture))
+                 (reset! *play-status* :pause)
+                 (.setText play-button ">"))
+      
       pack (delay (.pack player))]
 
   (.addChangeListener slider slider-listener)
@@ -68,17 +91,58 @@
 
   (.setText duration-label (video/format-time (video/frame-to-time frame-count fps)))
 
-  (c/do-component
-   ($ player :normal-speed-button)
-   [:on-click
-    (println "normal speed")
-    (reset! *frame-delay* normal-frame-delay)])
+  ;;keyboard short cuts:
+  ;; / for cut
+  ;; P for pause/play
+  ;; 1,2,3,4 for speeds
   
-  (c/do-component
-   ($ player :half-speed-button)
-   [:on-click
-    (println "half speed")
-    (reset! *frame-delay* (* normal-frame-delay 2))])
+  (let [set-speed
+        (fn [factor]
+          (reset! *frame-delay* (* normal-frame-delay (/ 1 factor)))
+          (reset! *speed-label* (str factor)))]
+    
+    (c/do-component ($ player :normal-speed-button)
+                    [:on-click (set-speed 1)])    
+    (c/do-component ($ player :half-speed-button)
+                    [:on-click (set-speed 1/2)])
+    (c/do-component ($ player :quarter-speed-button)
+                    [:on-click (set-speed 1/4)])
+    (c/do-component ($ player :eighth-speed-button)
+                    [:on-click (set-speed 1/8)])
+    (c/do-component ($ player :normal-speed-button)
+                    (event/add-window-shortcut KeyEvent/VK_1 0
+                                               (set-speed 1))
+                    (event/add-window-shortcut KeyEvent/VK_2 0
+                                               (set-speed 1/2))
+                    (event/add-window-shortcut KeyEvent/VK_3 0
+                                               (set-speed 1/4))
+                    (event/add-window-shortcut KeyEvent/VK_4 0
+                                               (set-speed 1/8))))
+
+  (doto ($ player :panel)
+    (event/add-window-shortcut
+     KeyEvent/VK_P 0
+     (if (= :pause @*play-status*) (play) (pause)))
+    (event/add-window-shortcut
+     KeyEvent/VK_LEFT 0
+     (if (= :pause @*play-status*)
+       (do
+         (println "Frame before pause:" @frame-before-pause)
+         (set-frame-pos capture (swap! frame-before-pause dec))
+         (println "Frame set to:" (frame-pos capture))
+         (let [frame (query-frame capture)]
+           (if frame
+             (set-image frame)
+             (update-time-display))))))
+    (event/add-window-shortcut
+     KeyEvent/VK_RIGHT 0
+     (if (= :pause @*play-status*)
+       (do
+         (set-frame-pos capture (swap! frame-before-pause inc))
+         (let [frame (query-frame capture)]
+           (if frame
+             (set-image frame)
+             (update-time-display)))))))
   
   (c/do-component
    ($ player :skip-back-button)
@@ -92,12 +156,11 @@
     (advance-frame-pos capture jump-frames)])
 
   (c/do-component
-   ($ player :pause-button)
-   (:on-click (reset! *play-status* :pause)))
-
-  (c/do-component
-   ($ player :play-button)
-   (:on-click (reset! *play-status* :play)))
+   ($ player :play-pause-button)
+   (:on-click
+    (if (= :pause @*play-status*)
+      (do (play))
+      (do (pause)))))
   
   (c/do-component
    slider
@@ -107,15 +170,13 @@
   (let [add-cut #(do (swap! annotations ann/add-cut (frame-pos capture))
                      (println "Cut added"))]
     (c/do-component ($ player :cut-button) (:on-click (add-cut)))
-
-    (event/add-window-shortcut ($ player :cut-button)
-                               KeyEvent/VK_C 0
-                               (add-cut)))
+    (event/add-window-shortcut ($ player :cut-button) KeyEvent/VK_C 0 (add-cut))
+    (event/add-window-shortcut ($ player :cut-button) KeyEvent/VK_SLASH 0 (add-cut)))
   
   (c/do-component
    player
    (:on-window-closing
-    (reset! *play-status* :pause)
+    (pause)
     (println "Video decoding stopped")))
 
   (c/do-component
@@ -130,19 +191,27 @@
         (set-frame-pos capture frame)))))
 
   (c/do-component
+   ($ player :delete-annotation-button)
+   (:on-click
+    (let [l ($ player :annotation-list)
+          i (.getSelectedIndex l)]
+      (if (not= -1 i)
+        (swap! annotations ann/remove-annotation i)))))
+  
+  (c/do-component
    ($ player :save-button)
    (:on-click
-    (reset! *play-status* :pause)
+    (pause)
     (ann/save-annotations @annotations (c/choose-file nil :save))
-    (reset! *play-status* :play))
-   (event/add-window-shortcut KeyEvent/VK_S 0 (.doClick this)))
+    (play))
+   (event/add-window-shortcut KeyEvent/VK_S 0 (.doClick this))) ;;<-doesn't work
 
   (c/do-component
    ($ player :load-button)
    (:on-click
-    (reset! *play-status* :pause)
+    (pause)
     (reset! annotations (ann/load-annotations (c/choose-file)))
-    (reset! *play-status* :play)))
+    (play)))
   
   #_(.setJMenuBar player
                   (clarity.menu/menu-bar
@@ -157,16 +226,9 @@
           frame (if (not= :pause @*play-status*)
                   (query-frame capture))]
       (if (= :play @*play-status*)
-        (reset! *image* (deref (:buffered-image frame))))
+        (set-image frame))
+      (update-time-display)
       (force pack)
-      (swing/do-swing
-       (let [f (frame-pos capture)]
-         (.setText time-label (video/format-time (video/frame-to-time f fps)))
-         (doto slider
-           (.removeChangeListener slider-listener)
-           (.setValue (frame-pos capture))
-           (.addChangeListener slider-listener))
-         (.setText status-line (str filename " (f" (int f) ")"))))
       (let [time-taken-to-decode (- (time-millis) time-before-decode)
             sleep-time (- @*frame-delay* time-taken-to-decode)]
         (if (> sleep-time 0)
