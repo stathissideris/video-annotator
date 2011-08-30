@@ -168,6 +168,9 @@
    [:maximum frame-count])
   
   (let [add-cut #(do (swap! annotations ann/add-cut (frame-pos capture))
+                     (swing/do-swing ;;not entirely correct, should be the index added
+                      (.ensureIndexIsVisible ($ player :annotation-list)
+                                             (dec (count (:entries @annotations)))))
                      (println "Cut added"))]
     (c/do-component ($ player :cut-button) (:on-click (add-cut)))
     (event/add-window-shortcut ($ player :cut-button) KeyEvent/VK_C 0 (add-cut))
