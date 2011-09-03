@@ -70,7 +70,7 @@
             (.setValue f)
             (.addChangeListener slider-listener))
           (.setText status-line (str filename
-                                     " - Speed: " @*speed-label*
+                                     " - Speed: x" @*speed-label*
                                      " (f" (int f) ")"))))
       frame-before-pause (atom 0)
 
